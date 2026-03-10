@@ -1,0 +1,3 @@
+launch_time: 2026-03-11T05:28:17.138646
+start_url: about:blank
+chrome_path: C:/chromedriver.exe
