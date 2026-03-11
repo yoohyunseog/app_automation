@@ -906,8 +906,8 @@ def post_to_naver(naver_id, title, content, ca_name, keyword, use_pinterest_imag
 
         time.sleep(1)
 
-        # 1. GPT로 감성 문장 + 해시태그 생성
-        result = extract_hashtags_json(content)
+        # 1. GPT로 감성 문장 + 해시태그 생성 extract_hashtags_json(content)
+        result = content
         print(f"✅ 감성 문장 및 해시태그 생성 결과: {result}")
 
         # 2. 분리해서 변수에 담기

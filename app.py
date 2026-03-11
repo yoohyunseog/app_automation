@@ -1227,6 +1227,7 @@ def main():
         "nb": "🔍 N/B 분석기",
         "blog": "📝 블로그 자동화",
         "write": "글쓰기",
+        "auto_repeater": "🔁 블로그 자동포스팅 반복",
         "nb_scout": "🛰 NB-Scout 자동 실행",
         "github_uploader": "🚀 GitHub XML Uploader",
         "gpu_automation": "⚡ GPU 자동화 도구",  # ✅ GPU 자동화 메뉴 추가
@@ -1249,6 +1250,10 @@ def main():
 
     elif st.session_state.page == "write":
         render_write_ui(set_bottom_message)  # ✅ 메시지 설정 함수 전달
+
+    elif st.session_state.page == "auto_repeater":
+        from components.blog_auto_repeater import render_auto_posting_ui
+        render_auto_posting_ui(set_bottom_message)
 
     elif st.session_state.page == "nb_scout":
         from apps.nb_scout.ui import render_nb_scout_page

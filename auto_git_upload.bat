@@ -1,4 +1,4 @@
-@echo off
+git config --global --add safe.directory "E:/Ai project/nb_wfa/ui"@echo off
 REM 전체 ui 폴더를 app_automation 저장소에 자동 업로드하는 스크립트
 REM 사용 전 git config --global user.name / user.email 및 PAT 인증 필요
 
