@@ -1,33 +1,48 @@
-# NB WFA UI
+﻿# NB WFA UI
 
-이 프로젝트는 NB WFA(Workflow Automation) 시스템의 UI 및 자동화 도구를 포함합니다.
+NB WFA(Workflow Automation) UI 諛??먮룞???ㅽ겕由쏀듃 紐⑥쓬?낅땲??
 
-## 주요 폴더 및 파일
-- `components/` : Streamlit 기반 UI 컴포넌트 및 자동화 기능
-- `writers/` : 블로그/티스토리/네이버 등 외부 서비스 업로드 모듈
-- `apps/` : 분석, 자동화, 수집 관련 모듈
-- `layout/` : 메인 레이아웃 및 UI 배치
-- `data/` : 로그, 임시 데이터, 자동저장 파일 등
-- `auto_git_upload.bat` : 전체 폴더를 GitHub에 자동 업로드하는 배치 파일
+## 二쇱슂 ?대뜑
+- `components/`: Streamlit 湲곕컲 UI 而댄룷?뚰듃
+- `writers/`: 釉붾줈洹?肄섑뀗痢??먮룞 ?묒꽦 諛??낅줈??紐⑤뱢
+- `apps/`: 遺꾩꽍/?먮룞??蹂댁“ 湲곕뒫
+- `layout/`: 硫붿씤 ?덉씠?꾩썐 諛?UI 諛곗튂
+- `data/`: 濡쒓렇/?꾩떆 ?곗씠??- `demo/`: ?곕え ?섏씠吏 由ъ냼??
+## Git ?먮룞 ?낅줈???ㅽ겕由쏀듃
+- `auto_git_upload.bat`
+- `auto_git_upload_ui.bat`
 
-## 자동 업로드 사용법
-1. Git 사용자 정보 등록 (최초 1회)
-   ```
-   git config --global user.name "Your Name"
-   git config --global user.email "your@email.com"
-   ```
-2. GitHub Personal Access Token(PAT) 발급 및 최초 push 시 입력
-3. `auto_git_upload.bat` 실행 시 전체 폴더가 자동 업로드됨
+???뚯씪? ?숈씪???숈옉???섎ŉ, ?꾩옱 釉뚮옖移섎? ?먮룞 媛먯???`origin/<?꾩옱釉뚮옖移?`濡?push ?⑸땲??
 
-## OpenAI API Key 관리
-- writers/tistory_auto_writer.py 등에서 환경변수 `OPENAI_API_KEY`를 사용
-- Windows 환경에서 환경변수 등록 방법:
-  1. 시스템 환경변수에 OPENAI_API_KEY 추가
-  2. 값에 OpenAI에서 발급받은 키 입력
+?숈옉 ?쒖꽌:
+1. ??μ냼 寃쎈줈 ?대룞
+2. `safe.directory` ?깅줉
+3. ?먭꺽 URL ?ㅼ젙
+4. `git add .`
+5. 蹂寃쎌궗??씠 ?덉쓣 ?뚮쭔 `git commit`
+6. ?꾩옱 釉뚮옖移섎줈 `git push`
 
-## 주의사항
-- 비밀키, 토큰 등은 코드에 직접 남기지 마세요.
-- __pycache__ 및 *.pyc 파일은 .gitignore로 관리됩니다.
+## ?ъ슜 諛⑸쾿
+1. Git ?ъ슜???뺣낫 ?ㅼ젙 (理쒖큹 1??
+```bash
+git config --global user.name "Your Name"
+git config --global user.email "your@email.com"
+```
+2. GitHub ?몄쬆(PAT ?먮뒗 Credential Manager) ?ㅼ젙
+3. `auto_git_upload.bat` ?먮뒗 `auto_git_upload_ui.bat` ?ㅽ뻾
 
-## 문의
-- 개발/운영 관련 문의: yoohyunseog@gmail.com
+## ?섍꼍 蹂??(?좏깮)
+?몃? 寃??而⑦뀓?ㅽ듃 ?ъ슜 ??
+- `YT_EXT_SEARCH_URL` (湲곕낯: `http://localhost:8091/search`)
+- `YT_EXT_SEARCH_API_KEY` (湲곕낯: `yt-external-key`)
+- `YT_EXT_SEARCH_COUNT` (湲곕낯: `6`)
+- `YT_EXT_SEARCH_TIMEOUT` (?쎄린 ??꾩븘?? 湲곕낯: `12`)
+- `YT_EXT_SEARCH_CONNECT_TIMEOUT` (?곌껐 ??꾩븘?? 湲곕낯: `2.5`)
+- `YT_EXT_SEARCH_RETRIES` (?ъ떆???잛닔, 湲곕낯: `1`)
+
+## 二쇱쓽 ?ы빆
+- 鍮꾨?踰덊샇/?좏겙??肄붾뱶??吏곸젒 ?ｌ? 留덉꽭??
+- `__pycache__`, 濡쒓렇 ?뚯씪, ??⑸웾 ?곗텧臾쇱? ?꾩슂 ??`.gitignore`濡?愿由ы븯?몄슂.
+
+## 臾몄쓽
+- 媛쒕컻/?댁쁺 臾몄쓽: `yoohyunseog@gmail.com`

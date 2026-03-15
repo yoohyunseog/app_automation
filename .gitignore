@@ -1,2 +1,13 @@
 __pycache__/
 *.pyc
+
+# Runtime logs and temp outputs
+*.log
+data/selenium_runtime/
+
+# External search/docker runtime caches (very large / non-portable)
+AI_Search/open-webui-data/
+AI_Search/logs/
+AI_Search/.env
+AI_Search/.env.*
+Perplexica/

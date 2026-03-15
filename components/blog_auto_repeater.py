@@ -1,4 +1,4 @@
-import streamlit as st
+﻿import streamlit as st
 from PIL import Image
 import time
 from datetime import datetime
@@ -151,6 +151,7 @@ def render_auto_posting_ui(set_bottom_message=None):
         if st.button("▶️ 자동포스팅 반복 시작", key="auto_start_btn"):
             st.session_state.auto_posting_running = True
             st.session_state.auto_posting_last_time = 0
+            st.rerun()
     with col2:
         if st.button("⏹️ 자동포스팅 반복 중지", key="auto_stop_btn"):
             st.session_state.auto_posting_running = False
@@ -265,9 +266,14 @@ def render_auto_posting_ui(set_bottom_message=None):
                 st.error(f"블로그 업로드 중 오류 발생: {e}")
             save_to_blog_folder(post_title, post_content, images_pil, menu_selection)
             st.session_state.auto_posting_last_time = now
+            # Trigger next cycle countdown without requiring manual interaction.
+            st.rerun()
         else:
             remain = int(interval_sec - (now - last))
             st.info(f"다음 자동포스팅까지 {remain}초 남음...")
+            # Keep auto-repeat alive in Streamlit's single-threaded model.
+            time.sleep(1)
+            st.rerun()
     else:
         st.info("자동포스팅 반복이 중지됨.")
 

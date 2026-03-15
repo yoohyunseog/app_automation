@@ -112,20 +112,20 @@ class NaverBlogUploader:
             
             # HTML 파일로 저장
             html_content = f"""<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>{title}</title>
-</head>
-<body>
-    <h1>{title}</h1>
-    <p><strong>카테고리:</strong> {ca_name_value}</p>
-    <p><strong>키워드:</strong> {keyword_for_naver}</p>
-    <hr>
-    {content}
-</body>
-</html>
-"""
+                            <html>
+                            <head>
+                                <meta charset="UTF-8">
+                                <title>{title}</title>
+                            </head>
+                            <body>
+                                <h1>{title}</h1>
+                                <p><strong>카테고리:</strong> {ca_name_value}</p>
+                                <p><strong>키워드:</strong> {keyword_for_naver}</p>
+                                <hr>
+                                {content}
+                            </body>
+                            </html>
+                            """
             
             with open(filename, 'w', encoding='utf-8') as f:
                 f.write(html_content)

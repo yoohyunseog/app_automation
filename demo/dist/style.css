@@ -1,0 +1,4 @@
+textarea {
+  overflow: hidden;
+  resize: none; /* 사용자가 크기 조절 못하게 */
+}

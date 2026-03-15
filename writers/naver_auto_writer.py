@@ -1,4 +1,4 @@
-import sys
+﻿import sys
 import os
 import time
 import re
@@ -163,6 +163,7 @@ LOG_FILE_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data",
 
 
 
+
 import json
 import re
 
@@ -171,48 +172,146 @@ import re
 import json
 
 
+YT_EXT_SEARCH_URL = os.getenv("YT_EXT_SEARCH_URL", "http://localhost:8091/search")
+YT_EXT_SEARCH_API_KEY = os.getenv("YT_EXT_SEARCH_API_KEY", "yt-external-key")
+YT_EXT_SEARCH_COUNT = int(os.getenv("YT_EXT_SEARCH_COUNT", "6"))
+YT_EXT_SEARCH_TIMEOUT = int(os.getenv("YT_EXT_SEARCH_TIMEOUT", "12"))
+YT_EXT_SEARCH_CONNECT_TIMEOUT = float(os.getenv("YT_EXT_SEARCH_CONNECT_TIMEOUT", "2.5"))
+YT_EXT_SEARCH_RETRIES = int(os.getenv("YT_EXT_SEARCH_RETRIES", "1"))
+_YT_EXT_SEARCH_WARNED = False
+
+
+def _build_external_search_context(query: str) -> str:
+    global _YT_EXT_SEARCH_WARNED
+    q = (query or "").strip()
+    if not q:
+        return ""
+
+    headers = {
+        "Content-Type": "application/json; charset=utf-8",
+        "Authorization": f"Bearer {YT_EXT_SEARCH_API_KEY}",
+    }
+    payload = {"query": q[:300], "count": max(1, min(YT_EXT_SEARCH_COUNT, 15))}
+
+    data = None
+    retries = max(1, min(YT_EXT_SEARCH_RETRIES, 3))
+    timeout_tuple = (max(0.5, YT_EXT_SEARCH_CONNECT_TIMEOUT), max(1, YT_EXT_SEARCH_TIMEOUT))
+    for attempt in range(1, retries + 1):
+        try:
+            resp = requests.post(
+                YT_EXT_SEARCH_URL,
+                headers=headers,
+                json=payload,
+                timeout=timeout_tuple,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            break
+        except requests.exceptions.ReadTimeout as e:
+            if attempt == retries and not _YT_EXT_SEARCH_WARNED:
+                print(
+                    f"[WARN] external search read timeout: {e}. "
+                    f"외부 검색 없이 계속 진행합니다. "
+                    f"(timeout={timeout_tuple}, retries={retries})"
+                )
+                _YT_EXT_SEARCH_WARNED = True
+            continue
+        except requests.exceptions.ConnectTimeout as e:
+            if attempt == retries and not _YT_EXT_SEARCH_WARNED:
+                print(
+                    f"[WARN] external search connect timeout: {e}. "
+                    f"외부 검색 없이 계속 진행합니다."
+                )
+                _YT_EXT_SEARCH_WARNED = True
+            continue
+        except requests.exceptions.ConnectionError as e:
+            if attempt == retries and not _YT_EXT_SEARCH_WARNED:
+                print(
+                    f"[WARN] external search connection error: {e}. "
+                    f"localhost:8091 서버 상태를 확인해 주세요. "
+                    f"외부 검색 없이 계속 진행합니다."
+                )
+                _YT_EXT_SEARCH_WARNED = True
+            continue
+        except Exception as e:
+            if not _YT_EXT_SEARCH_WARNED:
+                print(f"[WARN] external search request failed: {type(e).__name__}: {e}")
+                _YT_EXT_SEARCH_WARNED = True
+            return ""
+
+    if not isinstance(data, list):
+        return ""
+
+    lines = []
+    for idx, item in enumerate(data[:5], start=1):
+        if not isinstance(item, dict):
+            continue
+        title = str(item.get("title", "")).strip()
+        link = str(item.get("link", "")).strip()
+        snippet = str(item.get("snippet", "")).strip().replace("\n", " ")
+        if len(snippet) > 500:
+            snippet = snippet[:500] + "..."
+        if title or snippet:
+            lines.append(f"[{idx}] {title}\n- {snippet}\n- {link}")
+    return "\n".join(lines)
+
+
+
 def extract_hashtags_json(content: str) -> dict:
-    # 요청할 프롬프트 생성
+    plain_query = re.sub(r"<[^>]+>", " ", content or "")
+    plain_query = re.sub(r"\s+", " ", plain_query).strip()
+    external_context = _build_external_search_context(plain_query[:220])
+    # 요청 프롬프트 생성
     prompt_1 = f"""
-    다음 글을 감성적으로 바꿔줘. 아래 조건을 반드시 지켜줘:
+    다음 글을 "검색 링크를 근거로 설명하는 뉴스 지식 포스팅" 스타일로 작성해줘.
+    아래 조건을 반드시 지켜줘.
 
-    1. 중요하거나 핵심이 되는 문장 앞에는 아래 이모지 중 하나를 무작위로 붙여줘.  
-       단, 모든 문장에 붙이지 말고 의미상 강조가 필요한 문장만 골라 써줘.  
-       사용 가능한 이모지 목록:  
-       ✦ ✧ ✩ ✪ ✫ ✬ ✭ ✮ ✯ ✰ ✱ ✲ ✴ ✵ ❀ ❁ ✿ ❃ ❋ ❊ ❉ 𓂃 ◌ 𓈒 𓏸  
-
-    2. 문단이 끝날 때마다 반드시 `<br>` 태그를 넣어서 줄바꿈을 해줘.  
-       특히 `<h2>` 태그 앞에는 항상 `<br><br>`가 있도록 해줘.  
-       만약 `<br>`이 2개 미만일 경우, 자동으로 추가해서 가독성을 높여줘.  
-       전체 문장이 자연스럽고 읽기 편하게 보이도록 `<br>` 태그를 적절히 배치해줘.
-
-    3. 마지막 줄에는 감성 키워드 해시태그를 `#`로 시작해 한 줄로 이어서 출력해줘.  
-       예: `#장마#감성#여행`
-
-    4. 전체 응답은 아래 JSON 형식처럼 구성해줘. 절대 백틱(```json)으로 감싸지 말고 순수 JSON으로만 반환해:
+    1. 출력은 반드시 순수 JSON만:
     {{
-      "formatted_html": "감성 문장들<br>...",
-      "hashtags": "#장마 #우산 #여행"
+      "formatted_html": "HTML 본문",
+      "hashtags": "#키워드1 #키워드2 #키워드3"
     }}
+    백틱(```) 금지.
 
-    5. 줄바꿈 처리가 자연스럽게 `<br>`로 반영되었는지 다시 확인해줘.
+    2. 문체:
+    - 한국어, 존댓말 유지
+    - 너무 감성적이기보다 "핵심 요약 + 배경 설명 + 시사점" 중심
+    - 과장/선동/확정적 표현 금지
 
-    6. 문장은 모두 한국어로 번역해서 작성해줘.
+    3. 본문 구조(HTML):
+    - 도입 1문단(핵심 요약)
+    - 본문 3~5개 소제목(<h2>) 섹션
+    - 마무리 1문단(실무적 시사점)
+    - 각 문단 끝에 <br> 삽입
+    - 각 <h2> 앞에는 반드시 <br><br> 삽입
 
-    7. ⚠️ 링크는 **네이버 검색 링크만** 사용해줘. 다른 사이트 링크는 절대 하지 말 것!
-       - 반드시 단어 1개가 아니라, 문장(또는 문장 일부) 전체를 질문형으로 만들어 네이버 검색 링크를 걸어줘.
-       - 예시: `<a href="https://search.naver.com/search.naver?query=이+행사의+의미는+무엇인가요" target="_blank" style="color:#0066cc; text-decoration:underline;">이 행사의 의미는 무엇인가요?</a>`
-       - 각 문단마다 1~2개 정도, 너무 과하지 않게 자연스럽게 질문형 링크를 추가해줘.
+    4. 링크 활용 규칙(중요):
+    - 검색형 앵커 링크를 문장 의미에 맞게 자연스럽게 삽입
+    - 본문 전체에 4~8개 링크
+    - 분포: Google/Bing/Naver를 골고루 사용(한쪽 치우침 금지, 질문형 금지)
+    - 예시 형식:
+      <a href="https://www.google.com/search?q=..." target="_blank" style="color:#0066cc; text-decoration:underline;">앵커문장</a>
+      <a href="https://www.bing.com/search?q=..." target="_blank" style="color:#0066cc; text-decoration:underline;">앵커문장</a>
+      <a href="https://search.naver.com/search.naver?query=..." target="_blank" style="color:#0066cc; text-decoration:underline;">앵커문장</a>
 
-    8. 문체는 MZ 세대 감성에 맞되, 가볍고 세련되면서도 **존칭을 유지**해 주세요.  
-       너무 딱딱하지 않게, 감정 표현은 솔직하게 해주시되 자연스러운 높임말을 사용해 주세요.  
-       예: "괜히 울컥하셨던 날 있으시죠." 같은 따뜻한 존댓말 문장으로 감성적으로 풀어주세요.
+    5. "추가 참고자료(웹/유튜브 자막 검색 API)"를 우선 참고해
+    근거 중심으로 정리하되, 사실이 불명확하면 "가능성", "추정", "확인 필요"로 표현해줘.
 
-    내용:
+    6. 숫자/날짜/비교 포인트가 있으면 문장에 녹여 설명하고,
+    출처성 문장은 가능한 한 링크 앵커와 함께 배치해줘.
+
+    7. 주식/비트코인 주제에서는 특정 인물 이름 언급 금지.
+
+    8. 마지막 hashtags는 한 줄, 공백 구분, 3~7개.
+
+    원문:
     {content}
+
+    추가 참고자료(웹/유튜브 자막 검색 API):
+    {external_context if external_context else "검색 API 결과 없음"}
     """
 
-    # ✅ Ollama API 호출 (OpenAI 대체)
+    # Ollama API 호출 (OpenAI 대체)
     response_text = call_ollama_api(prompt_1, model="gpt-oss:120b-cloud")
     if not response_text or response_text.strip() == "":
         print("❌ Ollama 응답이 비어 있습니다. AI 응답을 확인하세요.")
@@ -234,17 +333,16 @@ def extract_hashtags_json(content: str) -> dict:
     # 5단계: JSON 파싱 시도
     try:
         result = json.loads(clean_json_text)
+        # 모델이 JSON 객체를 문자열로 한 번 더 감싸서 반환하는 경우 보정
+        if isinstance(result, str):
+            result = json.loads(result)
     except Exception as e:
         print(f"❌ JSON 파싱 실패: {e}\nOllama 원문 응답: {response_text}")
         return {"formatted_html": "", "hashtags": ""}
     # 필수 키 확인
-    if not result or "formatted_html" not in result or "hashtags" not in result:
+    if not isinstance(result, dict) or "formatted_html" not in result or "hashtags" not in result:
         print(f"❌ JSON 파싱 실패 또는 필수 키 누락. Ollama 원문 응답: {response_text}")
         return {"formatted_html": "", "hashtags": ""}
-    # 본문 맨 상단에 참소식.com 이동 질문형 문장 링크 추가
-    if result and "formatted_html" in result:
-        chamsosik_link = '<a href="https://참소식.com" target="_blank" style="color:#0066cc; text-decoration:underline;">더 많은 소식이 궁금하다면 참소식 포켓 뉴스에서 확인해보시겠어요?</a><br><br>'
-        result["formatted_html"] = chamsosik_link + result["formatted_html"]
     return result
 
 
@@ -568,7 +666,7 @@ def run_local_html_editor(title, content, ca_name, keyword, use_pinterest_image)
             print(f"⚠️ prompt_functions 모듈을 찾을 수 없어 ca_name 검증을 건너뜁니다: {ca_name}")
 
         # 3. 로컬 파일 경로 설정 및 로딩
-        local_path = r"E:\Ai project\ver0.2.0.0\demo_html\gpt-v-0-7\dist\index.html"
+        local_path = r"E:\Ai project\nb_wfa\ui\demo\dist\index.html"
         file_url = 'file:///' + local_path.replace('\\', '/')
         driver.get(file_url)
         time.sleep(2)  # 충분한 로딩 대기
@@ -906,9 +1004,12 @@ def post_to_naver(naver_id, title, content, ca_name, keyword, use_pinterest_imag
 
         time.sleep(1)
 
-        # 1. GPT로 감성 문장 + 해시태그 생성 extract_hashtags_json(content)
-        result = content
+        # 1. GPT로 감성 문장 + 해시태그 생성
+        result = extract_hashtags_json(content)
         print(f"✅ 감성 문장 및 해시태그 생성 결과: {result}")
+        if not isinstance(result, dict):
+            print(f"[WARN] 본문 생성 결과 타입이 dict가 아닙니다: {type(result).__name__}")
+            result = {"formatted_html": "", "hashtags": ""}
 
         # 2. 분리해서 변수에 담기
         formatted_html = result["formatted_html"]

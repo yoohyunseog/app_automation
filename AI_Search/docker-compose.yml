@@ -1,0 +1,32 @@
+version: '3.8'
+services:
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: open-webui
+    ports:
+      - "3000:8080"
+    environment:
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434
+      - SEARXNG_QUERY_URL=http://searxng:8080/search
+      - ENABLE_WEB_SEARCH=true
+      - WEB_SEARCH_ENGINE=external
+      - EXTERNAL_WEB_SEARCH_URL=http://host.docker.internal:8091/search
+      - EXTERNAL_WEB_SEARCH_API_KEY=yt-external-key
+      - BYPASS_WEB_SEARCH_WEB_LOADER=true
+      - WEB_SEARCH_RESULT_COUNT=8
+    depends_on:
+      - searxng
+    restart: unless-stopped
+    volumes:
+      - ./open-webui-data:/app/backend/data
+
+  searxng:
+    image: searxng/searxng:latest
+    container_name: searxng
+    ports:
+      - "8081:8080"
+    environment:
+      - BASE_URL=http://localhost:8081/
+    restart: unless-stopped
+    volumes:
+      - ./searxng-data:/etc/searxng
